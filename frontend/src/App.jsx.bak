@@ -1,0 +1,200 @@
+import React, { useState, useEffect } from 'react';
+import Header from './components/Header';
+import Hero from './components/Hero';
+import AnalysisResult from './components/AnalysisResult';
+import Alternatives from './components/Alternatives';
+import { Trophy, TrendingUp, Users, Leaf, Star, Shield, ArrowDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+
+function App() {
+  const [page, setPage] = useState('home');
+  const [analysis, setAnalysis] = useState(null);
+
+  const renderPage = () => {
+    switch (page) {
+      case 'alternatives':
+        return <Alternatives category={analysis?.category || 'Clothing'} />;
+      case 'leaderboard':
+        return <LeaderboardPage />;
+      case 'reviews':
+        return <ReviewsCommunity />;
+      default:
+        return (
+          <div className="pb-40">
+            <Hero onAnalyze={(data) => {
+              setAnalysis(data);
+              document.getElementById('analysis-section')?.scrollIntoView({ behavior: 'smooth' });
+            }} />
+
+            <div id="analysis-section" className="scroll-mt-32">
+              <AnimatePresence>
+                {analysis && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -50 }}
+                  >
+                    <AnalysisResult data={analysis} />
+                    <div className="flex flex-col items-center justify-center mb-40 gap-6">
+                      <div className="flex items-center gap-4 text-gray-500 font-bold uppercase tracking-[4px] text-xs">
+                        <div className="w-12 h-[1px] bg-white/10" />
+                        Ready to make the switch?
+                        <div className="w-12 h-[1px] bg-white/10" />
+                      </div>
+                      <button
+                        onClick={() => setPage('alternatives')}
+                        className="group flex items-center gap-4 bg-white/5 hover:bg-white/10 px-10 py-6 rounded-[32px] border border-white/10 transition-all text-xl font-black italic uppercase tracking-wider"
+                      >
+                        Discover Eco Alternatives <Leaf className="w-6 h-6 text-eco-400 group-hover:rotate-12 transition-transform" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {!analysis && <HomeInfo />}
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full relative">
+      <Header setPage={setPage} currentPage={page} />
+      <main className="container mx-auto">
+        {renderPage()}
+      </main>
+
+      <footer className="border-t border-white/5 py-24 mt-20 text-center relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-eco-500/5 blur-[100px] -z-10" />
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <Leaf className="w-6 h-6 text-eco-500" /> <span className="font-black tracking-tighter text-2xl text-white italic">ECOSWAP</span>
+        </div>
+        <div className="flex justify-center gap-8 mb-12 text-gray-500 font-bold text-sm uppercase tracking-widest">
+          <a href="#" className="hover:text-eco-400 transition-colors">Framework</a>
+          <a href="#" className="hover:text-eco-400 transition-colors">Manifesto</a>
+          <a href="#" className="hover:text-eco-400 transition-colors">Privacy</a>
+        </div>
+        <p className="text-gray-600 font-bold text-xs uppercase tracking-[3px]">© 2026 EcoSwap AI Labs. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+}
+
+const HomeInfo = () => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    whileInView={{ opacity: 1 }}
+    className="grid grid-cols-1 md:grid-cols-3 gap-8 px-6 mt-20"
+  >
+    <InfoCard
+      icon={<Shield className="w-8 h-8 text-eco-500" />}
+      title="Verified Carbon Data"
+      desc="We use open-source LCA databases to provide the most accurate footprint estimations."
+    />
+    <InfoCard
+      icon={<Star className="w-8 h-8 text-yellow-500" />}
+      title="Incentivized Swaps"
+      desc="Earn badges and points for every sustainable choice you make through EcoSwap."
+    />
+    <InfoCard
+      icon={<TrendingDown className="w-8 h-8 text-blue-500" />}
+      title="Beat Greenwashing"
+      desc="Our AI identifies vague marketing terms and highlights the true material composition."
+    />
+  </motion.div>
+);
+
+const InfoCard = ({ icon, title, desc }) => (
+  <div className="glass-morphism p-10 rounded-[40px] border-white/5 hover:border-white/10 transition-all group">
+    <div className="mb-6 group-hover:scale-110 transition-transform origin-left">{icon}</div>
+    <h3 className="text-2xl font-black mb-4 italic uppercase tracking-tight">{title}</h3>
+    <p className="text-gray-400 font-medium leading-relaxed">{desc}</p>
+  </div>
+);
+
+const LeaderboardPage = () => {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/leaderboard');
+        setUsers(response.data.length > 0 ? response.data : [
+          { username: 'EcoGuardian_42', points: 2850, badge: 'Earth Guardian', eco_swaps_count: 142 },
+          { username: 'NatureSurfer', points: 1920, badge: 'Earth Guardian', eco_swaps_count: 96 },
+          { username: 'GreenVibes', points: 1100, badge: 'Climate Hero', eco_swaps_count: 55 },
+          { username: 'ReuseKing', points: 640, badge: 'Climate Hero', eco_swaps_count: 32 },
+          { username: 'Seedling_X', points: 150, badge: 'Eco Warrior', eco_swaps_count: 7 }
+        ]);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchLeaderboard();
+  }, []);
+
+  return (
+    <div className="py-40 max-w-5xl mx-auto px-6">
+      <div className="text-center mb-24">
+        <div className="inline-block p-4 bg-yellow-500/10 rounded-[32px] mb-8 border border-yellow-500/20">
+          <Trophy className="w-12 h-12 text-yellow-500" />
+        </div>
+        <h2 className="text-6xl md:text-7xl font-black mb-6 tracking-tight uppercase italic">Global <br /><span className="text-yellow-500">Hall of Fame.</span></h2>
+        <p className="text-gray-500 text-xl font-medium max-w-xl mx-auto italic">Top practitioners of conscious consumption across the globe.</p>
+      </div>
+
+      <div className="glass-morphism rounded-[48px] overflow-hidden border-white/5 divide-y divide-white/5">
+        {users.map((user, i) => (
+          <motion.div
+            key={user.username}
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="flex items-center justify-between p-10 hover:bg-white/5 transition-all group"
+          >
+            <div className="flex items-center gap-10">
+              <span className="text-4xl font-black text-gray-800 w-12 italic">{i + 1}</span>
+              <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl font-black text-white italic">
+                {user.username.charAt(0)}
+              </div>
+              <div>
+                <h3 className="font-black text-2xl mb-1 flex items-center gap-3 group-hover:text-eco-400 transition-colors">
+                  {user.username} {i === 0 && <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />}
+                </h3>
+                <div className="flex items-center gap-4">
+                  <span className={`text-[10px] font-black uppercase tracking-[3px] ${user.badge === 'Earth Guardian' ? 'text-purple-400' :
+                      user.badge === 'Climate Hero' ? 'text-blue-400' : 'text-eco-400'
+                    }`}>{user.badge}</span>
+                  <span className="w-1 h-1 bg-white/10 rounded-full" />
+                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-[3px]">{user.eco_swaps_count} Swaps</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-4xl font-black text-white italic">{user.points.toLocaleString()}</div>
+              <div className="text-[10px] font-black text-gray-500 uppercase tracking-[4px] mt-1">Impact Score</div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ReviewsCommunity = () => (
+  <div className="py-40 text-center px-6">
+    <div className="inline-flex p-5 bg-eco-500/10 rounded-full mb-8">
+      <Users className="w-12 h-12 text-eco-400" />
+    </div>
+    <h2 className="text-5xl font-black mb-6 italic uppercase">Community Hub <br /><span className="text-gray-500">Coming Soon.</span></h2>
+    <p className="text-gray-500 text-xl font-medium max-w-lg mx-auto mb-12 italic">Join 12,000+ shoppers sharing real-world sustainability data.</p>
+    <div className="flex justify-center">
+      <button className="btn-primary">Join Waitlist</button>
+    </div>
+  </div>
+);
+
+export default App;

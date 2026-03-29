@@ -1,0 +1,13 @@
+{
+    "name": "ecoswap-root",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "concurrently \"npm run backend\" \"npm run frontend\"",
+        "backend": "cd backend && python app.py",
+        "frontend": "cd frontend && npm run dev",
+        "install:all": "npm install && cd backend && pip install -r requirements.txt && cd ../frontend && npm install"
+    },
+    "dependencies": {
+        "concurrently": "^8.2.2"
+    }
+}

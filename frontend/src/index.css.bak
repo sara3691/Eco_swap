@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-eco-50: #f0fdf4;
+  --color-eco-100: #dcfce7;
+  --color-eco-200: #bbf7d0;
+  --color-eco-300: #86efac;
+  --color-eco-400: #4ade80;
+  --color-eco-500: #22c55e;
+  --color-eco-600: #16a34a;
+  --color-eco-700: #15803d;
+  --color-eco-800: #166534;
+  --color-eco-900: #14532d;
+  --color-eco-950: #052e16;
+
+  --color-clay-50: #faf7f5;
+  --color-clay-100: #f5efeb;
+  --color-clay-200: #e8dcd2;
+  --color-clay-300: #d5c0b0;
+  --color-clay-400: #bda08a;
+  --color-clay-500: #a8866e;
+  --color-clay-600: #95715a;
+  --color-clay-700: #7c5d4b;
+  --color-clay-800: #674e40;
+  --color-clay-900: #564237;
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+}
+
+:root {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  background-color: #050505;
+  color: #e2e8f0;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(34, 197, 94, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(168, 134, 110, 0.05) 0%, transparent 50%),
+    #050505;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-morphism {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.eco-text-gradient {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn-primary {
+  @apply relative overflow-hidden bg-eco-600 hover:bg-eco-500 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 shadow-lg shadow-eco-900/20 active:scale-95;
+}
+
+.input-glass {
+  @apply bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-eco-500/50 focus:ring-4 focus:ring-eco-500/10 transition-all text-white placeholder:text-gray-500;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.card-hover {
+  @apply hover:-translate-y-2 hover:shadow-2xl hover:shadow-eco-500/10 transition-all duration-500;
+}
