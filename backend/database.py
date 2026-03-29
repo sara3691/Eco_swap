@@ -1,16 +1,17 @@
-import sqlite3
+import psycopg2
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "ecoswap.db")
+def get_connection():
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cursor = conn.cursor()
     
-    # Users table — complete login: username, email, password_hash
+    # USERS TABLE
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
         name TEXT,
@@ -18,32 +19,23 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
-    # Migration: add columns if they don't exist
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
-    except Exception:
-        pass
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN name TEXT")
-    except Exception:
-        pass
 
-    # Login history tracking
+    # LOGIN HISTORY
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS login_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         logout_time TIMESTAMP,
-        session_duration INTEGER, -- in seconds
+        session_duration INTEGER,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
 
-    # Search history tracking
+    # SEARCH HISTORY
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS search_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         search_query TEXT NOT NULL,
         eco_alternative_suggested TEXT,
@@ -52,7 +44,7 @@ def init_db():
     )
     ''')
 
-    # Eco behaviour analysis scores
+    # ECO SCORES
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS eco_scores (
         user_id INTEGER PRIMARY KEY,
@@ -64,10 +56,10 @@ def init_db():
     )
     ''')
     
-    # Alternatives table
+    # ALTERNATIVES
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS alternatives (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         category TEXT NOT NULL,
         name TEXT NOT NULL,
         material TEXT,
@@ -79,10 +71,10 @@ def init_db():
     )
     ''')
     
-    # Reviews table
+    # REVIEWS
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         product_name TEXT NOT NULL,
         rating INTEGER,
@@ -92,7 +84,7 @@ def init_db():
     )
     ''')
     
-    # Gamification table
+    # GAMIFICATION
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS gamification (
         user_id INTEGER PRIMARY KEY,
@@ -107,10 +99,10 @@ def init_db():
     )
     ''')
 
-    # Eco impact logs table
+    # ECO IMPACT LOGS
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS eco_impact_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         action_type TEXT,
         product_name TEXT,
@@ -123,7 +115,7 @@ def init_db():
     )
     ''')
 
-    # Seed some alternatives with real e-commerce links
+    # SEED ALTERNATIVES (FULL DATA)
     cursor.execute("SELECT COUNT(*) FROM alternatives")
     if cursor.fetchone()[0] == 0:
         alternatives = [
@@ -143,10 +135,10 @@ def init_db():
         ]
         cursor.executemany('''
         INSERT INTO alternatives (category, name, material, sustainability_score, carbon_estimate, price, image_url, product_link)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ''', alternatives)
 
-    # Seed mock users and gamification
+    # SEED USERS + GAMIFICATION
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
         mock_users = [
@@ -154,16 +146,23 @@ def init_db():
             (2, 'GreenLife_Alice', 'alice@green.com', 'Green Alice'),
             (3, 'NatureLover_Bob', 'bob@nature.com', 'Nature Bob')
         ]
-        cursor.executemany("INSERT OR IGNORE INTO users (id, username, email, name) VALUES (?, ?, ?, ?)", mock_users)
+        cursor.executemany('''
+        INSERT INTO users (id, username, email, name)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (id) DO NOTHING
+        ''', mock_users)
         
         mock_stats = [
             (1, 2850, 'Forest', '⛰️', 7, 142, 5),
             (2, 1920, 'Tree', '🌳', 6, 96, 3),
             (3, 850, 'Fruiting Plant', '🍓', 5, 42, 1)
         ]
-        cursor.executemany("INSERT INTO gamification (user_id, points, badge_name, badge_icon, eco_level, eco_swaps_count, eco_streak) VALUES (?, ?, ?, ?, ?, ?, ?)", mock_stats)
+        cursor.executemany('''
+        INSERT INTO gamification (user_id, points, badge_name, badge_icon, eco_level, eco_swaps_count, eco_streak)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (user_id) DO NOTHING
+        ''', mock_stats)
 
-        # Seed initial impact logs
         mock_logs = [
             (1, 'swap', 'Plastic Toothbrush', 'Bamboo Toothbrush', 0.5, 20.0, 5.0),
             (2, 'swap', 'Plastic Water Bottle', 'Steel Bottle', 1.2, 50.0, 10.0),
@@ -171,9 +170,13 @@ def init_db():
             (1, 'swap', 'Liquid Soap', 'Bar Soap', 0.3, 40.0, 2.0),
             (2, 'swap', 'Paper Towels', 'Microfiber Cloth', 1.0, 0.0, 50.0)
         ]
-        cursor.executemany("INSERT INTO eco_impact_logs (user_id, action_type, product_name, alternative_name, co2_saved, plastic_saved, water_saved) VALUES (?, ?, ?, ?, ?, ?, ?)", mock_logs)
+        cursor.executemany('''
+        INSERT INTO eco_impact_logs (user_id, action_type, product_name, alternative_name, co2_saved, plastic_saved, water_saved)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ''', mock_logs)
 
     conn.commit()
+    cursor.close()
     conn.close()
 
 if __name__ == "__main__":
