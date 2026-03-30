@@ -175,6 +175,21 @@ def init_db():
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', mock_logs)
 
+    # FIX SEQUENCES (Ensures counters start AFTER the highest existing ID)
+    tables_to_fix = ['users', 'login_history', 'search_history', 'alternatives', 'reviews', 'eco_impact_logs']
+    for table in tables_to_fix:
+        try:
+            # Resets the counter so the NEXT record uses MAX(id) + 1. If empty, starts at 1.
+            cursor.execute(f"""
+                SELECT setval(
+                    pg_get_serial_sequence('{table}', 'id'), 
+                    COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, 
+                    false
+                )
+            """)
+        except Exception as e:
+            print(f"DEBUG: Skipping sequence reset for {table}: {e}")
+
     conn.commit()
     cursor.close()
     conn.close()
