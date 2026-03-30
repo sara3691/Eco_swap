@@ -1,31 +1,32 @@
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
+from dotenv import load_dotenv
 
-DB_PATH = r"c:\Users\Admin\OneDrive\Desktop\ai\ecoswap\backend\ecoswap.db"
+load_dotenv()
 
-if not os.path.exists(DB_PATH):
-    print(f"DB not found at {DB_PATH}")
-    # Try alternate path
-    DB_PATH = "ecoswap.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-try:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    
-    # Check tables
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
-    print(f"Tables: {[t['name'] for t in tables]}")
-    
-    if 'alternatives' in [t['name'] for t in tables]:
-        cursor.execute("SELECT * FROM alternatives LIMIT 20;")
-        rows = cursor.fetchall()
-        for row in rows:
-            print(dict(row))
-    else:
-        print("Table 'alternatives' not found")
+if not DATABASE_URL:
+    print("DATABASE_URL not found in .env")
+else:
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-    conn.close()
-except Exception as e:
-    print(f"Error: {e}")
+        # Check tables
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
+        tables = cursor.fetchall()
+        print(f"Tables: {[t['table_name'] for t in tables]}")
+        
+        if 'alternatives' in [t['table_name'] for t in tables]:
+            cursor.execute("SELECT * FROM alternatives LIMIT 20;")
+            rows = cursor.fetchall()
+            for row in rows:
+                print(dict(row))
+        else:
+            print("Table 'alternatives' not found")
+            
+        conn.close()
+    except Exception as e:
+        print(f"Error: {e}")

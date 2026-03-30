@@ -1,5 +1,6 @@
 import os
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -11,7 +12,7 @@ from datetime import datetime
 from ai_engine import analyze_product, get_chatbot_response, get_eco_alternatives
 from image_fetch import fetch_product_image, fetch_eco_product_image
 from product_fetcher import fetch_product_data, _build_amazon_url, _estimate_price
-from database import init_db, DB_PATH
+from database import init_db
 
 # Load environment variables
 load_dotenv()
@@ -26,17 +27,19 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize database on startup
 try:
-    print(f"DEBUG: Using DB at {DB_PATH}")
     init_db()
     logger.info("Database initialized successfully.")
 except Exception as e:
     logger.error(f"Failed to initialize database: {e}")
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=20)
-    conn.execute('PRAGMA journal_mode=WAL;')
-    conn.row_factory = sqlite3.Row
+    from database import get_connection
+    conn = get_connection()
+    # No need for WAL pragma with Postgres
     return conn
+
+def get_cursor(conn):
+    return conn.cursor(cursor_factory=RealDictCursor)
 
 
 def enrich_alternatives_with_product_data(ai_alternatives):
@@ -129,28 +132,32 @@ def internal_get_recommendations(product_name, category):
         
         # ─── Level 2: Local Database ────────────────────────────────
         conn = get_db_connection()
+        cursor = get_cursor(conn)
         results = []
         
         if product_name and len(product_name) > 2:
-            results = conn.execute(
-                'SELECT * FROM alternatives WHERE LOWER(name) LIKE ?',
+            cursor.execute(
+                'SELECT * FROM alternatives WHERE LOWER(name) LIKE %s',
                 (f'%{product_name}%',)
-            ).fetchall()
+            )
+            results = cursor.fetchall()
         
         if not results and category and category != 'general':
-            results = conn.execute(
-                'SELECT * FROM alternatives WHERE LOWER(category) = ? LIMIT 3',
+            cursor.execute(
+                'SELECT * FROM alternatives WHERE LOWER(category) = %s LIMIT 3',
                 (category,)
-            ).fetchall()
+            )
+            results = cursor.fetchall()
         
         if not results and product_name:
             words = product_name.split()
             for word in words:
                 if len(word) > 3:
-                    results = conn.execute(
-                        'SELECT * FROM alternatives WHERE LOWER(name) LIKE ? OR LOWER(material) LIKE ?',
+                    cursor.execute(
+                        'SELECT * FROM alternatives WHERE LOWER(name) LIKE %s OR LOWER(material) LIKE %s',
                         (f'%{word}%', f'%{word}%')
-                    ).fetchall()
+                    )
+                    results = cursor.fetchall()
                     if results:
                         break
         
@@ -227,28 +234,32 @@ def signup():
     conn = None
     try:
         conn = get_db_connection()
+        cursor = get_cursor(conn)
         # Check if user exists
-        existing = conn.execute('SELECT id FROM users WHERE email = ? OR username = ?', (email, username)).fetchone()
+        cursor.execute('SELECT id FROM users WHERE email = %s OR username = %s', (email, username))
+        existing = cursor.fetchone()
         if existing:
             return jsonify({"error": "Username or Email already exists"}), 400
 
         hashed_password = generate_password_hash(password)
         with conn:
-            cursor = conn.execute(
-                'INSERT INTO users (username, email, password_hash, name) VALUES (?, ?, ?, ?)',
-                (username, email, hashed_password, name)
-            )
-            user_id = cursor.lastrowid
-            
-            # Initialize gamification and eco_scores
-            conn.execute(
-                'INSERT OR IGNORE INTO gamification (user_id, points, badge_name, badge_icon, eco_level, eco_swaps_count, eco_streak) VALUES (?, 0, "Seed", "🌱", 1, 0, 0)',
-                (user_id,)
-            )
-            conn.execute(
-                'INSERT OR IGNORE INTO eco_scores (user_id, eco_transformation_score, total_searches, eco_searches) VALUES (?, 0.0, 0, 0)',
-                (user_id,)
-            )
+            with get_cursor(conn) as cur:
+                cur.execute(
+                    'INSERT INTO users (username, email, password_hash, name) VALUES (%s, %s, %s, %s) RETURNING id',
+                    (username, email, hashed_password, name)
+                )
+                user_record = cur.fetchone()
+                user_id = user_record['id'] if user_record else None
+                
+                # Initialize gamification and eco_scores
+                cur.execute(
+                    'INSERT INTO gamification (user_id, points, badge_name, badge_icon, eco_level, eco_swaps_count, eco_streak) VALUES (%s, 0, %s, %s, 1, 0, 0) ON CONFLICT (user_id) DO NOTHING',
+                    (user_id, "Seed", "🌱")
+                )
+                cur.execute(
+                    'INSERT INTO eco_scores (user_id, eco_transformation_score, total_searches, eco_searches) VALUES (%s, 0.0, 0, 0) ON CONFLICT (user_id) DO NOTHING',
+                    (user_id,)
+                )
 
         return jsonify({"message": "User created successfully", "user_id": user_id}), 201
     except Exception as e:
@@ -272,7 +283,9 @@ def login():
     conn = None
     try:
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+        cursor = get_cursor(conn)
+        cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
+        user = cursor.fetchone()
 
         if not user or not check_password_hash(user['password_hash'], password):
             return jsonify({"error": "Invalid email or password"}), 401
@@ -281,16 +294,19 @@ def login():
         
         # Track login history
         with conn:
-            cursor = conn.execute(
-                'INSERT INTO login_history (user_id, login_time) VALUES (?, CURRENT_TIMESTAMP)',
-                (user_id,)
-            )
-            session_id = cursor.lastrowid
+            with get_cursor(conn) as cur:
+                cur.execute(
+                    'INSERT INTO login_history (user_id, login_time) VALUES (%s, CURRENT_TIMESTAMP) RETURNING id',
+                    (user_id,)
+                )
+                session_id = cur.fetchone()['id']
 
-        gam = conn.execute('SELECT * FROM gamification WHERE user_id = ?', (user_id,)).fetchone()
+        cursor.execute('SELECT * FROM gamification WHERE user_id = %s', (user_id,))
+        gam = cursor.fetchone()
         gam = dict(gam) if gam else {}
         
-        eco = conn.execute('SELECT * FROM eco_scores WHERE user_id = ?', (user_id,)).fetchone()
+        cursor.execute('SELECT * FROM eco_scores WHERE user_id = %s', (user_id,))
+        eco = cursor.fetchone()
         eco_score = eco['eco_transformation_score'] if eco else 0
 
         return jsonify({
@@ -331,18 +347,21 @@ def logout():
     conn = None
     try:
         conn = get_db_connection()
-        login_record = conn.execute('SELECT login_time FROM login_history WHERE id = ?', (session_id,)).fetchone()
+        cursor = get_cursor(conn)
+        cursor.execute('SELECT login_time FROM login_history WHERE id = %s', (session_id,))
+        login_record = cursor.fetchone()
         
         if login_record:
-            login_time = datetime.fromisoformat(login_record['login_time'].replace(' ', 'T'))
+            login_time = login_record['login_time']
             logout_time = datetime.now()
             duration = int((logout_time - login_time).total_seconds())
             
             with conn:
-                conn.execute(
-                    'UPDATE login_history SET logout_time = ?, session_duration = ? WHERE id = ?',
-                    (logout_time.strftime('%Y-%m-%d %H:%M:%S'), duration, session_id)
-                )
+                with get_cursor(conn) as cur:
+                    cur.execute(
+                        'UPDATE login_history SET logout_time = %s, session_duration = %s WHERE id = %s',
+                        (logout_time, duration, session_id)
+                    )
         
         return jsonify({"message": "Logged out successfully"})
     except Exception as e:
@@ -359,11 +378,14 @@ def get_user(user_id):
     conn = None
     try:
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        cursor = get_cursor(conn)
+        cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+        user = cursor.fetchone()
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        gam = conn.execute('SELECT * FROM gamification WHERE user_id = ?', (user_id,)).fetchone()
+        cursor.execute('SELECT * FROM gamification WHERE user_id = %s', (user_id,))
+        gam = cursor.fetchone()
 
         user = dict(user)
         gam = dict(gam) if gam else {"points": 0, "badge_name": "Seed", "badge_icon": "🌱", "eco_level": 1, "eco_swaps_count": 0, "eco_streak": 0}
@@ -450,37 +472,39 @@ def analyze_product_endpoint():
         user_id = data.get('user_id')
         if user_id:
             conn = get_db_connection()
+            cursor = get_cursor(conn)
             alts = recommendations.get("alternatives", [])
             suggested = alts[0]['name'] if alts else "None"
             
             # Check if current search is eco-friendly
-            # Simple heuristic: if score > 80, it's an eco product
             is_eco = analysis.get('sustainability_score', 0) > 80
             
             with conn:
-                conn.execute(
-                    'INSERT INTO search_history (user_id, search_query, eco_alternative_suggested) VALUES (?, ?, ?)',
-                    (user_id, product_name, suggested)
-                )
-                
-                # Update Eco Score
-                eco_stats = conn.execute('SELECT * FROM eco_scores WHERE user_id = ?', (user_id,)).fetchone()
-                if not eco_stats:
-                    total = 1
-                    eco_count = 1 if is_eco else 0
-                    score = (eco_count / total) * 100
-                    conn.execute(
-                        'INSERT INTO eco_scores (user_id, total_searches, eco_searches, eco_transformation_score) VALUES (?, ?, ?, ?)',
-                        (user_id, total, eco_count, score)
+                with get_cursor(conn) as cur:
+                    cur.execute(
+                        'INSERT INTO search_history (user_id, search_query, eco_alternative_suggested) VALUES (%s, %s, %s)',
+                        (user_id, product_name, suggested)
                     )
-                else:
-                    total = eco_stats['total_searches'] + 1
-                    eco_count = eco_stats['eco_searches'] + (1 if is_eco else 0)
-                    score = (eco_count / total) * 100
-                    conn.execute(
-                        'UPDATE eco_scores SET total_searches = ?, eco_searches = ?, eco_transformation_score = ?, last_updated = CURRENT_TIMESTAMP WHERE user_id = ?',
-                        (total, eco_count, score, user_id)
-                    )
+                    
+                    # Update Eco Score
+                    cur.execute('SELECT * FROM eco_scores WHERE user_id = %s', (user_id,))
+                    eco_stats = cur.fetchone()
+                    if not eco_stats:
+                        total = 1
+                        eco_count = 1 if is_eco else 0
+                        score = (eco_count / total) * 100
+                        cur.execute(
+                            'INSERT INTO eco_scores (user_id, total_searches, eco_searches, eco_transformation_score) VALUES (%s, %s, %s, %s)',
+                            (user_id, total, eco_count, score)
+                        )
+                    else:
+                        total = eco_stats['total_searches'] + 1
+                        eco_count = eco_stats['eco_searches'] + (1 if is_eco else 0)
+                        score = (eco_count / total) * 100
+                        cur.execute(
+                            'UPDATE eco_scores SET total_searches = %s, eco_searches = %s, eco_transformation_score = %s, last_updated = CURRENT_TIMESTAMP WHERE user_id = %s',
+                            (total, eco_count, score, user_id)
+                        )
             conn.close()
 
         return jsonify({
@@ -529,18 +553,21 @@ def get_alternatives_legacy(category):
     """Legacy endpoint for backward compatibility."""
     try:
         conn = get_db_connection()
-        alternatives_list = conn.execute(
+        cursor = get_cursor(conn)
+        cursor.execute(
             '''SELECT * FROM alternatives 
-               WHERE (category LIKE ? OR name LIKE ?) 
+               WHERE (category LIKE %s OR name LIKE %s) 
                AND sustainability_score >= 70
                ORDER BY sustainability_score DESC''', 
             (f'%{category}%', f'%{category}%')
-        ).fetchall()
+        )
+        alternatives_list = cursor.fetchall()
         
         if not alternatives_list:
-            alternatives_list = conn.execute(
+            cursor.execute(
                 'SELECT * FROM alternatives WHERE sustainability_score >= 85 ORDER BY sustainability_score DESC LIMIT 3'
-            ).fetchall()
+            )
+            alternatives_list = cursor.fetchall()
             
         conn.close()
         
@@ -592,11 +619,12 @@ def suggest_alternative():
 
     try:
         conn = get_db_connection()
-        conn.execute(
-            'INSERT INTO eco_suggestions (product_name, suggested_name, suggested_link) VALUES (?, ?, ?)',
-            (product_name, suggested_name, suggested_link)
-        )
-        conn.commit()
+        with conn:
+            with get_cursor(conn) as cur:
+                cur.execute(
+                    'INSERT INTO eco_suggestions (product_name, suggested_name, suggested_link) VALUES (%s, %s, %s)',
+                    (product_name, suggested_name, suggested_link)
+                )
         conn.close()
         return jsonify({"message": "Suggestion saved successfully!"})
     except Exception as e:
@@ -608,13 +636,15 @@ def suggest_alternative():
 def get_leaderboard():
     try:
         conn = get_db_connection()
-        leaderboard = conn.execute('''
+        cursor = get_cursor(conn)
+        cursor.execute('''
             SELECT u.username, g.points, g.badge_name as badge, g.badge_icon, g.eco_swaps_count, g.eco_level, g.eco_streak
             FROM users u
             JOIN gamification g ON u.id = g.user_id
             ORDER BY g.points DESC
             LIMIT 10
-        ''').fetchall()
+        ''')
+        leaderboard = cursor.fetchall()
         conn.close()
         return jsonify([dict(row) for row in leaderboard])
     except Exception as e:
@@ -646,8 +676,9 @@ def get_user_gamification():
     user_id = request.args.get('user_id', 1)
     try:
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
-        user_stats = conn.execute('SELECT * FROM gamification WHERE user_id = ?', (user_id,)).fetchone()
+        cursor = get_cursor(conn)
+        cursor.execute('SELECT * FROM gamification WHERE user_id = %s', (user_id,))
+        user_stats = cursor.fetchone()
         conn.close()
         
         if user_stats:
@@ -675,14 +706,16 @@ def get_user_gamification():
 def get_community_stats():
     try:
         conn = get_db_connection()
-        stats = conn.execute('''
+        cursor = get_cursor(conn)
+        cursor.execute('''
             SELECT 
                 COUNT(*) as total_swaps,
                 SUM(co2_saved) as total_co2,
                 SUM(plastic_saved) as total_plastic,
                 SUM(water_saved) as total_water
             FROM eco_impact_logs
-        ''').fetchone()
+        ''')
+        stats = cursor.fetchone()
         conn.close()
         
         return jsonify({
@@ -701,15 +734,16 @@ def get_community_feed():
     conn = None
     try:
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
-        feed = conn.execute('''
+        cursor = get_cursor(conn)
+        cursor.execute('''
             SELECT l.*, g.badge_icon, u.username
             FROM eco_impact_logs l
             JOIN users u ON l.user_id = u.id
             JOIN gamification g ON l.user_id = g.user_id
             ORDER BY l.timestamp DESC
             LIMIT 20
-        ''').fetchall()
+        ''')
+        feed = cursor.fetchall()
         return jsonify([dict(row) for row in feed])
     except Exception as e:
         logger.error(f"Community Feed Error: {e}")
@@ -731,8 +765,9 @@ def update_gamification_v2():
     conn = None
     try:
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
-        user_stats = conn.execute('SELECT * FROM gamification WHERE user_id = ?', (user_id,)).fetchone()
+        cursor = get_cursor(conn)
+        cursor.execute('SELECT * FROM gamification WHERE user_id = %s', (user_id,))
+        user_stats = cursor.fetchone()
         
         now = datetime.now()
         level_upgraded = False
@@ -747,10 +782,11 @@ def update_gamification_v2():
             badge = calculate_badge(new_points)
             
             with conn:
-                conn.execute('''
-                    INSERT INTO gamification (user_id, points, eco_swaps_count, badge_name, badge_icon, eco_level, eco_streak, last_action_timestamp)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (user_id, new_points, new_swaps, badge['name'], badge['icon'], badge['level'], new_streak, now.isoformat()))
+                with get_cursor(conn) as cur:
+                    cur.execute('''
+                        INSERT INTO gamification (user_id, points, eco_swaps_count, badge_name, badge_icon, eco_level, eco_streak, last_action_timestamp)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ''', (user_id, new_points, new_swaps, badge['name'], badge['icon'], badge['level'], new_streak, now))
         else:
             user_stats = dict(user_stats)
             old_points = user_stats['points']
@@ -764,7 +800,10 @@ def update_gamification_v2():
             
             new_streak = old_streak
             if last_action_str:
-                last_action = datetime.fromisoformat(last_action_str)
+                last_action = last_action_str # In postgres/psycopg2 this is usually a datetime object
+                if isinstance(last_action, str):
+                    last_action = datetime.fromisoformat(last_action.replace(' ', 'T'))
+                
                 diff = now - last_action
                 if diff < timedelta(hours=24):
                     pass
@@ -785,11 +824,12 @@ def update_gamification_v2():
                 level_upgraded = True
             
             with conn:
-                conn.execute('''
-                    UPDATE gamification 
-                    SET points = ?, eco_swaps_count = ?, badge_name = ?, badge_icon = ?, eco_level = ?, eco_streak = ?, last_action_timestamp = ?
-                    WHERE user_id = ?
-                ''', (new_points, new_swaps, badge['name'], badge['icon'], new_level, new_streak, now.isoformat(), user_id))
+                with get_cursor(conn) as cur:
+                    cur.execute('''
+                        UPDATE gamification 
+                        SET points = %s, eco_swaps_count = %s, badge_name = %s, badge_icon = %s, eco_level = %s, eco_streak = %s, last_action_timestamp = %s
+                        WHERE user_id = %s
+                    ''', (new_points, new_swaps, badge['name'], badge['icon'], new_level, new_streak, now, user_id))
                 
                 if action_type == 'swap':
                     product_name = data.get('product_name', 'Unknown Product')
@@ -798,14 +838,16 @@ def update_gamification_v2():
                     plastic = round(20.0 + (new_swaps * 2.0), 1)
                     water = round(5.0 + (new_swaps * 1.5), 1)
                     
-                    conn.execute('''
-                        INSERT INTO eco_impact_logs (user_id, action_type, product_name, alternative_name, co2_saved, plastic_saved, water_saved)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (user_id, 'swap', product_name, alt_name, co2, plastic, water))
+                    with get_cursor(conn) as cur2:
+                        cur2.execute('''
+                            INSERT INTO eco_impact_logs (user_id, action_type, product_name, alternative_name, co2_saved, plastic_saved, water_saved)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ''', (user_id, 'swap', product_name, alt_name, co2, plastic, water))
 
             current_level = old_level
 
-        updated_stats = conn.execute('SELECT * FROM gamification WHERE user_id = ?', (user_id,)).fetchone()
+        cursor.execute('SELECT * FROM gamification WHERE user_id = %s', (user_id,))
+        updated_stats = cursor.fetchone()
         
         return jsonify({
             "status": "success",
@@ -840,33 +882,40 @@ def get_user_dashboard(user_id):
     conn = None
     try:
         conn = get_db_connection()
+        cursor = get_cursor(conn)
         
         # 1. User info & gamification
-        user = conn.execute('SELECT name, username, email FROM users WHERE id = ?', (user_id,)).fetchone()
+        cursor.execute('SELECT name, username, email FROM users WHERE id = %s', (user_id,))
+        user = cursor.fetchone()
         if not user:
             return jsonify({"error": "User not found"}), 404
             
-        gam = conn.execute('SELECT * FROM gamification WHERE user_id = ?', (user_id,)).fetchone()
-        eco = conn.execute('SELECT * FROM eco_scores WHERE user_id = ?', (user_id,)).fetchone()
+        cursor.execute('SELECT * FROM gamification WHERE user_id = %s', (user_id,))
+        gam = cursor.fetchone()
+        cursor.execute('SELECT * FROM eco_scores WHERE user_id = %s', (user_id,))
+        eco = cursor.fetchone()
         
         # 2. Recent searches
-        searches = conn.execute('''
+        cursor.execute('''
             SELECT search_query, eco_alternative_suggested, timestamp 
             FROM search_history 
-            WHERE user_id = ? 
+            WHERE user_id = %s 
             ORDER BY timestamp DESC LIMIT 5
-        ''', (user_id,)).fetchall()
+        ''', (user_id,))
+        searches = cursor.fetchall()
         
         # 3. Login history
-        logins = conn.execute('''
+        cursor.execute('''
             SELECT login_time, logout_time, session_duration 
             FROM login_history 
-            WHERE user_id = ? 
+            WHERE user_id = %s 
             ORDER BY login_time DESC LIMIT 5
-        ''', (user_id,)).fetchall()
+        ''', (user_id,))
+        logins = cursor.fetchall()
         
         # 4. Impact highlights
-        impact_logs = conn.execute('SELECT SUM(co2_saved) as co2, SUM(plastic_saved) as plastic, SUM(water_saved) as water FROM eco_impact_logs WHERE user_id = ?', (user_id,)).fetchone()
+        cursor.execute('SELECT SUM(co2_saved) as co2, SUM(plastic_saved) as plastic, SUM(water_saved) as water FROM eco_impact_logs WHERE user_id = %s', (user_id,))
+        impact_logs = cursor.fetchone()
 
         return jsonify({
             "user": dict(user),
@@ -902,21 +951,24 @@ def get_user_history(user_id):
     conn = None
     try:
         conn = get_db_connection()
+        cursor = get_cursor(conn)
         # Fetch Search History
-        searches = conn.execute('''
+        cursor.execute('''
             SELECT id, search_query, eco_alternative_suggested, timestamp 
             FROM search_history 
-            WHERE user_id = ? 
+            WHERE user_id = %s 
             ORDER BY timestamp DESC
-        ''', (user_id,)).fetchall()
+        ''', (user_id,))
+        searches = cursor.fetchall()
         
         # Fetch Login History
-        logins = conn.execute('''
+        cursor.execute('''
             SELECT id, login_time, logout_time, session_duration 
             FROM login_history 
-            WHERE user_id = ? 
+            WHERE user_id = %s 
             ORDER BY login_time DESC
-        ''', (user_id,)).fetchall()
+        ''', (user_id,))
+        logins = cursor.fetchall()
         
         return jsonify({
             "search_history": [dict(s) for s in searches],
@@ -936,7 +988,8 @@ def delete_history(history_id):
     try:
         conn = get_db_connection()
         with conn:
-            conn.execute('DELETE FROM search_history WHERE id = ?', (history_id,))
+            with get_cursor(conn) as cur:
+                cur.execute('DELETE FROM search_history WHERE id = %s', (history_id,))
         return jsonify({"message": "History deleted"}), 200
     except Exception as e:
         logger.error(f"History Delete Error: {e}")
@@ -947,4 +1000,5 @@ def delete_history(history_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, threaded=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
