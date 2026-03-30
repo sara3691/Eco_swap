@@ -64,7 +64,7 @@ function App() {
    const handleLogout = async () => {
     if (currentUser?.session_id) {
       try {
-        await axios.post('http://localhost:5000/logout', { session_id: currentUser.session_id });
+        await axios.post('https://eco-swap-thci.onrender.com/logout', { session_id: currentUser.session_id });
       } catch (err) {
         console.error("Logout tracking error:", err);
       }
@@ -81,7 +81,7 @@ function App() {
     const uid = userId || currentUser?.id;
     if (!uid) return;
     try {
-      const response = await axios.post('http://localhost:5000/gamification/update', {
+      const response = await axios.post('https://eco-swap-thci.onrender.com/gamification/update', {
         user_id: uid,
         action_type: actionType,
         ...extraData
@@ -264,7 +264,7 @@ const LeaderboardPage = () => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/leaderboard');
+        const response = await axios.get('https://eco-swap-thci.onrender.com/leaderboard');
         setUsers(response.data.length > 0 ? response.data : [
           { username: 'EcoGuardian_42', points: 2850, badge: 'Earth Guardian', eco_swaps_count: 142 },
           { username: 'NatureSurfer', points: 1920, badge: 'Earth Guardian', eco_swaps_count: 96 },

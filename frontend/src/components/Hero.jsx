@@ -13,7 +13,7 @@ const Hero = ({ onAnalyze, userId }) => {
 
         setLoading(true);
         try {
-            const response = await axios.post('http://localhost:5000/analyze-product', { 
+            const response = await axios.post('https://eco-swap-thci.onrender.com/analyze-product', { 
                 product: query,
                 user_id: userId 
             });

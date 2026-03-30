@@ -47,7 +47,7 @@ const EcoAssistantChat = () => {
         localStorage.setItem('eco-assistant-tooltip', 'true');
 
         try {
-            const response = await axios.post('http://localhost:5000/chatbot', { message: input });
+            const response = await axios.post('https://eco-swap-thci.onrender.com/chatbot', { message: input });
             const aiMsg = { id: Date.now() + 1, type: 'ai', text: response.data.reply };
             setMessages(prev => [...prev, aiMsg]);
         } catch (error) {

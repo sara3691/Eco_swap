@@ -22,9 +22,9 @@ const EcoImpactCommunity = ({ userStats }) => {
         const fetchCommunityData = async () => {
             try {
                 const [statsRes, feedRes, leaderboardRes] = await Promise.all([
-                    axios.get('http://localhost:5000/community/stats'),
-                    axios.get('http://localhost:5000/community/feed'),
-                    axios.get('http://localhost:5000/leaderboard')
+                    axios.get('https://eco-swap-thci.onrender.com/community/stats'),
+                    axios.get('https://eco-swap-thci.onrender.com/community/feed'),
+                    axios.get('https://eco-swap-thci.onrender.com/leaderboard')
                 ]);
                 setStats(statsRes.data);
                 setFeed(feedRes.data);

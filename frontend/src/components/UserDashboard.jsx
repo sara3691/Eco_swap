@@ -22,7 +22,7 @@ const UserDashboard = ({ userId }) => {
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
-                const response = await axios.get(`http://localhost:5000/user/dashboard/${userId}`);
+                const response = await axios.get(`https://eco-swap-thci.onrender.com/user/dashboard/${userId}`);
                 setData(response.data);
             } catch (err) {
                 console.error("Dashboard fetch error:", err);

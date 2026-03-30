@@ -39,7 +39,7 @@ const LoginModal = ({ onLogin }) => {
         setError('');
         try {
             const endpoint = mode === 'login' ? '/login' : '/signup';
-            const response = await axios.post(`http://localhost:5000${endpoint}`, formData);
+            const response = await axios.post(`https://eco-swap-thci.onrender.com${endpoint}`, formData);
             
             if (mode === 'signup') {
                 setSuccess(true);

@@ -12,7 +12,7 @@ const AISuggestions = ({ productName }) => {
             if (!productName) return;
             setLoading(true);
             try {
-                const response = await axios.post('http://localhost:5000/ai/recommend', {
+                const response = await axios.post('https://eco-swap-thci.onrender.com/ai/recommend', {
                     product_name: productName
                 });
                 setSuggestions(response.data);

@@ -33,7 +33,7 @@ const Alternatives = ({ category = 'General', productName = '', onSwap, userId }
     const fetchItems = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('http://localhost:5000/alternatives', {
+            const response = await axios.get('https://eco-swap-thci.onrender.com/alternatives', {
                 params: {
                     category: category,
                     product: productName,
@@ -49,7 +49,7 @@ const Alternatives = ({ category = 'General', productName = '', onSwap, userId }
             console.error("Fetch Alternatives Error:", err);
             // Retry once on failure
             try {
-                const retry = await axios.get('http://localhost:5000/alternatives', {
+                const retry = await axios.get('https://eco-swap-thci.onrender.com/alternatives', {
                     params: { category: category, product: productName, user_id: userId }
                 });
                 setItems(retry.data.alternatives || []);
@@ -74,7 +74,7 @@ const Alternatives = ({ category = 'General', productName = '', onSwap, userId }
     const handleSuggest = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/suggest', {
+            await axios.post('https://eco-swap-thci.onrender.com/suggest', {
                 product_name: productName || category,
                 suggested_name: suggestForm.name,
                 suggested_link: suggestForm.link

@@ -12,7 +12,7 @@ const History = ({ userId }) => {
 
     const fetchHistory = async () => {
         try {
-            const response = await axios.get(`http://localhost:5000/history/${userId}`);
+            const response = await axios.get(`https://eco-swap-thci.onrender.com/history/${userId}`);
             setSearchHistory(response.data.search_history || []);
             setLoginHistory(response.data.login_history || []);
         } catch (err) {
@@ -29,7 +29,7 @@ const History = ({ userId }) => {
     const handleDelete = async (historyId) => {
         setDeletingId(historyId);
         try {
-            await axios.delete(`http://localhost:5000/history/${historyId}`);
+            await axios.delete(`https://eco-swap-thci.onrender.com/history/${historyId}`);
             setSearchHistory(prev => prev.filter(item => item.id !== historyId));
         } catch (err) {
             console.error("Error deleting history:", err);
