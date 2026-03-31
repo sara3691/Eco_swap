@@ -208,17 +208,17 @@ function App() {
         {renderPage()}
       </main>
 
-      <footer className="border-t border-clay-100 dark:border-white/5 py-24 mt-20 text-center relative overflow-hidden bg-white/40 dark:bg-black/40">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-eco-100/30 blur-[100px] -z-10" />
+      <footer className="border-t border-clay-100 dark:border-white/5 py-12 md:py-24 mt-12 md:mt-20 text-center relative overflow-hidden bg-white/40 dark:bg-black/40">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] h-[200px] md:h-[300px] bg-eco-100/30 blur-[80px] md:blur-[100px] -z-10" />
         <div className="flex items-center justify-center gap-3 mb-6">
-          <Leaf className="w-6 h-6 text-eco-600" /> <span className="font-black tracking-tighter text-2xl text-clay-900 dark:text-white italic">ECOSWAP</span>
+          <Leaf className="w-5 h-5 md:w-6 md:h-6 text-eco-600" /> <span className="font-black tracking-tighter text-xl md:text-2xl text-clay-900 dark:text-white italic uppercase">ECOSWAP</span>
         </div>
-        <div className="flex justify-center gap-8 mb-12 text-clay-400 font-bold text-sm uppercase tracking-widest">
+        <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-8 md:mb-12 text-clay-400 font-bold text-xs md:text-sm uppercase tracking-widest px-4">
           <a href="#" className="hover:text-eco-600 transition-colors">Exchange</a>
           <a href="#" className="hover:text-eco-600 transition-colors">Manifesto</a>
           <a href="#" className="hover:text-eco-600 transition-colors">Privacy</a>
         </div>
-        <p className="text-clay-500 font-bold text-xs uppercase tracking-[3px]">© 2026 EcoSwap AI Labs. All rights reserved.</p>
+        <p className="text-clay-500 font-bold text-[9px] md:text-xs uppercase tracking-[2px] md:tracking-[3px] px-4">© 2026 EcoSwap AI Labs. All rights reserved.</p>
       </footer>
 
       <EcoAssistantChat />
@@ -230,20 +230,20 @@ const HomeInfo = () => (
   <motion.div
     initial={{ opacity: 0 }}
     whileInView={{ opacity: 1 }}
-    className="grid grid-cols-1 md:grid-cols-3 gap-8 px-6 mt-20"
+    className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 px-4 md:px-6 mt-12 md:mt-20"
   >
     <InfoCard
-      icon={<Shield className="w-8 h-8 text-eco-600" />}
+      icon={<Shield className="w-6 h-6 md:w-8 md:h-8 text-eco-600" />}
       title="Verified Data"
       desc="We use open-source LCA databases to provide the most accurate footprint estimations."
     />
     <InfoCard
-      icon={<Star className="w-8 h-8 text-orange-400" />}
+      icon={<Star className="w-6 h-6 md:w-8 md:h-8 text-orange-400" />}
       title="Incentivized"
       desc="Earn badges and points for every sustainable choice you make through EcoSwap."
     />
     <InfoCard
-      icon={<TrendingDown className="w-8 h-8 text-blue-400" />}
+      icon={<TrendingDown className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />}
       title="Beat Greenwash"
       desc="Our AI identifies vague marketing terms and highlights the true material composition."
     />
@@ -251,10 +251,10 @@ const HomeInfo = () => (
 );
 
 const InfoCard = ({ icon, title, desc }) => (
-  <div className="glass-morphism p-10 rounded-[40px] transition-all group bg-white/60 dark:bg-white/5 border-clay-100 dark:border-white/5 hover:border-eco-200 dark:hover:border-white/10">
-    <div className="mb-6 group-hover:scale-110 transition-transform origin-left">{icon}</div>
-    <h3 className="text-2xl font-black mb-4 italic uppercase tracking-tight text-clay-900 dark:text-white">{title}</h3>
-    <p className="text-clay-500 font-medium leading-relaxed">{desc}</p>
+  <div className="glass-morphism p-8 md:p-10 rounded-[32px] md:rounded-[40px] transition-all group bg-white/60 dark:bg-white/5 border-clay-100 dark:border-white/5 hover:border-eco-200 dark:hover:border-white/10 shadow-lg">
+    <div className="mb-4 md:mb-6 group-hover:scale-110 transition-transform origin-left">{icon}</div>
+    <h3 className="text-xl md:text-2xl font-black mb-3 md:mb-4 italic uppercase tracking-tight text-clay-900 dark:text-white leading-tight">{title}</h3>
+    <p className="text-sm md:text-base text-clay-500 font-medium leading-relaxed">{desc}</p>
   </div>
 );
 
@@ -289,54 +289,54 @@ const LeaderboardPage = () => {
       />
       <div className="page-bg-overlay" />
 
-      <div className="relative z-10 py-40 max-w-5xl mx-auto px-6">
-        <div className="text-center mb-24">
+      <div className="relative z-10 py-20 md:py-40 max-w-5xl mx-auto px-4 md:px-6">
+        <div className="text-center mb-16 md:mb-24">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="inline-block p-4 bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-[32px] mb-8 border border-white/50 shadow-2xl"
+            className="inline-block p-4 bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-[24px] md:rounded-[32px] mb-6 md:mb-8 border border-white/50 shadow-2xl"
           >
-            <Trophy className="w-12 h-12 text-orange-400" />
+            <Trophy className="w-8 h-8 md:w-12 md:h-12 text-orange-400" />
           </motion.div>
-          <h2 className="text-6xl md:text-8xl font-black mb-6 tracking-tight uppercase italic text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+          <h2 className="text-4xl md:text-8xl font-black mb-4 md:mb-6 tracking-tight uppercase italic text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] leading-tight">
             Global <br /><span className="eco-text-gradient">Hall of Fame.</span>
           </h2>
-          <p className="text-white/90 text-xl font-bold max-w-xl mx-auto italic drop-shadow-md">
+          <p className="text-white/90 text-lg md:text-xl font-bold max-w-xl mx-auto italic drop-shadow-md px-2">
             The world's most dedicated sustainability champions.
           </p>
         </div>
 
-        <div className="glass-morphism rounded-[48px] overflow-hidden border-white/20 divide-y divide-clay-100 dark:divide-white/5 bg-white/60 dark:bg-black/40 backdrop-blur-2xl">
+        <div className="glass-morphism rounded-[32px] md:rounded-[48px] overflow-hidden border-white/20 divide-y divide-clay-100 dark:divide-white/5 bg-white/60 dark:bg-black/40 backdrop-blur-2xl shadow-3xl">
           {users.map((user, i) => (
             <motion.div
               key={user.username}
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="flex items-center justify-between p-10 hover:bg-white/40 dark:hover:bg-white/5 transition-all group"
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 md:p-10 hover:bg-white/40 dark:hover:bg-white/5 transition-all group gap-4"
             >
-              <div className="flex items-center gap-10">
-                <span className={`text-4xl font-black w-12 italic ${i < 3 ? 'text-eco-500' : 'text-clay-300 dark:text-clay-700'}`}>{i + 1}</span>
-                <div className="w-16 h-16 rounded-3xl bg-white dark:bg-white/10 border border-white/20 flex items-center justify-center text-2xl font-black text-clay-900 dark:text-white shadow-sm italic transition-transform group-hover:rotate-6">
+              <div className="flex items-center gap-6 md:gap-10">
+                <span className={`text-2xl md:text-4xl font-black w-8 md:w-12 italic ${i < 3 ? 'text-eco-500' : 'text-clay-300 dark:text-clay-700'}`}>{i + 1}</span>
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-white dark:bg-white/10 border border-white/20 flex items-center justify-center text-xl md:text-2xl font-black text-clay-900 dark:text-white shadow-sm italic transition-transform group-hover:rotate-6">
                   {user.username.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-black text-2xl mb-1 flex items-center gap-3 text-clay-900 dark:text-white group-hover:text-eco-600 transition-colors">
-                    {user.username} {i === 0 && <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />}
+                  <h3 className="font-black text-xl md:text-2xl mb-1 flex items-center gap-2 md:gap-3 text-clay-900 dark:text-white group-hover:text-eco-600 transition-colors leading-tight">
+                    {user.username} {i === 0 && <Star className="w-4 h-4 md:w-5 md:h-5 fill-yellow-400 text-yellow-400" />}
                   </h3>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xl">{user.badge_icon}</span>
-                    <span className="text-[10px] font-black uppercase tracking-[3px] text-eco-600 dark:text-eco-400">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                    <span className="text-lg">{user.badge_icon}</span>
+                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[2px] md:tracking-[3px] text-eco-600 dark:text-eco-400">
                       {user.badge_name || user.badge}
                     </span>
-                    <span className="w-1 h-1 bg-clay-200 dark:bg-white/10 rounded-full" />
-                    <span className="text-[10px] font-black text-clay-500 dark:text-clay-400 uppercase tracking-[3px]">{user.eco_swaps_count} Swaps</span>
+                    <span className="hidden sm:block w-1 h-1 bg-clay-200 dark:bg-white/10 rounded-full" />
+                    <span className="text-[8px] md:text-[10px] font-black text-clay-500 dark:text-clay-400 uppercase tracking-[2px] md:tracking-[3px]">{user.eco_swaps_count} Swaps</span>
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-4xl font-black text-clay-900 dark:text-white italic tracking-tight">{user.points.toLocaleString()}</div>
-                <div className="text-[10px] font-black text-clay-400 uppercase tracking-[4px] mt-1">Impact Score</div>
+              <div className="text-left sm:text-right w-full sm:w-auto pl-14 sm:pl-0">
+                <div className="text-2xl md:text-4xl font-black text-clay-900 dark:text-white italic tracking-tight leading-none">{user.points.toLocaleString()}</div>
+                <div className="text-[8px] md:text-[10px] font-black text-clay-400 uppercase tracking-[2px] md:tracking-[4px] mt-1">Impact Score</div>
               </div>
             </motion.div>
           ))}
@@ -345,5 +345,6 @@ const LeaderboardPage = () => {
     </div>
   );
 };
+
 
 export default App;

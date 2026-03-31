@@ -72,7 +72,7 @@ const EcoAssistantChat = () => {
     };
 
     return (
-        <div className="fixed bottom-8 right-8 z-[1000] flex flex-col items-end">
+        <div className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-[1000] flex flex-col items-end">
             {/* Welcome Tooltip */}
             <AnimatePresence>
                 {showTooltip && !isOpen && (
@@ -86,7 +86,7 @@ const EcoAssistantChat = () => {
                         <p className="text-sm font-medium">Need help picking green products? Ask me! 🌿</p>
                         <button
                             onClick={() => setShowTooltip(false)}
-                            className="absolute -top-2 -right-2 bg-clay-100 dark:bg-clay-700 rounded-full p-1"
+                            className="absolute -top-2 -right-2 bg-clay-100 dark:bg-clay-700 rounded-full p-1 shadow-md"
                         >
                             <X className="w-3 h-3" />
                         </button>
@@ -104,10 +104,10 @@ const EcoAssistantChat = () => {
                             opacity: 1,
                             y: 0,
                             scale: 1,
-                            height: isMinimized ? '60px' : '500px'
+                            height: isMinimized ? '60px' : (window.innerWidth < 640 ? '80vh' : '500px')
                         }}
                         exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                        className={`w-[90vw] sm:w-[380px] bg-emerald-50 dark:bg-emerald-950 rounded-[32px] shadow-2xl border-2 border-emerald-500 overflow-hidden mb-4 flex flex-col transition-all duration-300`}
+                        className={`w-[calc(100vw-32px)] sm:w-[380px] bg-emerald-50 dark:bg-emerald-950 rounded-[28px] md:rounded-[32px] shadow-2xl border-2 border-emerald-500 overflow-hidden mb-4 flex flex-col transition-all duration-300`}
                     >
                         {/* Header */}
                         <div className="bg-emerald-600 p-4 flex items-center justify-between text-white shrink-0 shadow-md relative z-10">
@@ -216,7 +216,7 @@ const EcoAssistantChat = () => {
                 whileHover={{ scale: 1.05, y: -5 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={toggleChat}
-                className="w-16 h-16 rounded-[24px] bg-white dark:bg-clay-800 shadow-[0_20px_50px_rgba(22,163,74,0.3)] border-2 border-eco-500/20 dark:border-white/10 flex items-center justify-center pointer-events-auto overflow-hidden group relative"
+                className="w-14 h-14 md:w-16 md:h-16 rounded-[20px] md:rounded-[24px] bg-white dark:bg-clay-800 shadow-[0_20px_50px_rgba(22,163,74,0.3)] border-2 border-eco-500/20 dark:border-white/10 flex items-center justify-center pointer-events-auto overflow-hidden group relative"
                 style={{ zIndex: 9999 }}
             >
                 <img

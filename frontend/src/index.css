@@ -246,3 +246,69 @@ body::before {
   background-size: 32px 32px;
   opacity: 0.15;
 }
+
+/* Responsive Fixes */
+@media (max-width: 768px) {
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.8);
+  }
+  
+  .btn-primary {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+
+  .glass-morphism {
+    padding: 1.5rem !important;
+    border-radius: 24px !important;
+  }
+
+  .input-glass {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.02em !important;
+  }
+}
+
+/* Global Responsive Base */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+.container-responsive {
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Ensure no horizontal overflow ever */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Touch friendly buttons */
+button, 
+[role="button"],
+a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
